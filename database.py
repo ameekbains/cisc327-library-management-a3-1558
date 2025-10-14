@@ -199,3 +199,42 @@ def update_borrow_record_return_date(patron_id: str, book_id: int, return_date: 
     except Exception as e:
         conn.close()
         return False
+##New functions added below to help with setting up tests
+def get_all_patron_record(patron_id: str) -> List[Dict]:
+    """Get all books ever borrowed by patron."""
+    conn = get_db_connection()
+    records = conn.execute('''
+        SELECT br.*, b.title, b.author 
+        FROM borrow_records br 
+        JOIN books b ON br.book_id = b.id 
+        WHERE br.patron_id = ?
+        ORDER BY br.borrow_date
+    ''', (patron_id,)).fetchall()
+    conn.close()
+    
+    borrow_record = []
+    for record in records:
+
+        return_date = record['return_date']
+        # Return date handling: only convert to datetime if it exists
+        if return_date:
+            return_date = datetime.fromisoformat(return_date)
+
+        borrow_record.append({
+                        'book_id': record['book_id'],
+            'title': record['title'],
+            'author': record['author'],
+            'borrow_date': datetime.fromisoformat(record['borrow_date']),
+            'due_date': datetime.fromisoformat(record['due_date']),
+            'return_date': return_date
+        })
+    
+    return borrow_record
+
+def drop_database_tables():
+    """ Drop database tables. """
+    conn = get_db_connection()
+    conn.execute("DROP TABLE IF EXISTS `books`")
+    conn.execute("DROP TABLE IF EXISTS `borrow_records`")
+    conn.commit()
+    conn.close()
